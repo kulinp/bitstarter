@@ -86,15 +86,7 @@ if(require.main == module) {
 	.option('-u, --url <url>', 'URL to check')
 	.parse(process.argv);
 
-    process.argv.forEach(function(val, index, array) {
-	console.log(index + ': ' + val);
-    });
-
-    sys.puts("First argument = " + program.file + "\n");
-    sys.puts("Second argument = " + program.url + "\n");
-
     if(program.url) {
-	sys.puts("URL level checks...\n");
 	rest.get(program.url.toString()).on('complete', function(result) {
 	    if(result instanceof Error) {
 		sys.puts("An error occurred: " + result.message); 
@@ -107,7 +99,6 @@ if(require.main == module) {
 	});
 
     } else {
-	sys.puts("File level checks...\n");
 	var checkJson = checkHtmlSource(program.file, program.checks);
 	var outJson = JSON.stringify(checkJson, null, 4);
 	console.log(outJson);
