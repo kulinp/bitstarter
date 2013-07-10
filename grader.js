@@ -24,8 +24,26 @@ References:
 var fs = require('fs');
 var program = require('commander');
 var cheerio = require('cheerio');
+var sys = require('util');
+var rest = require('restler');
+var buffer = require('buffer');
+var outfile = "urlfile.html";
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
+var URL_DEFAULT = "http://agile-taiga-3330.herokuapp.com/";
+
+var assertValidUrl = function(url) {
+    rest.get(url).on('complete', function(result) {
+	if(result instanceof Error) {
+	    return("Error: " + result.message);
+	} else {
+	    var urlBuffer = new Buffer(result);
+	    fs.writeFileSync('index.html',result);
+	    //sys.puts(result);
+	    //return(result);
+	}
+    });
+}
 
 var assertFileExists = function(infile) {
     var instr = infile.toString();
@@ -43,7 +61,8 @@ var loadChecks = function(checksfile) {
     return JSON.parse(fs.readFileSync(checksfile));
 };
 
-var checkHtmlFile = function(htmlfile, checksfile) {
+/* TODO: Modify this function so it accepts either file or url to check*/
+var checkHtmlSource = function(htmlfile, checksfile) {
     $ = cheerioHtmlFile(htmlfile);
     var checks = loadChecks(checksfile).sort();
     var out = {};
@@ -64,11 +83,35 @@ if(require.main == module) {
     program
 	.option('-c, --checks <check file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
 	.option('-f, --file <html file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
+	.option('-u, --url <url>', 'URL to check')
 	.parse(process.argv);
 
-    var checkJson = checkHtmlFile(program.file, program.checks);
-    var outJson = JSON.stringify(checkJson, null, 4);
-    console.log(outJson);
+    process.argv.forEach(function(val, index, array) {
+	console.log(index + ': ' + val);
+    });
+
+    sys.puts("First argument = " + program.file + "\n");
+    sys.puts("Second argument = " + program.url + "\n");
+
+    if(program.url) {
+	sys.puts("URL level checks...\n");
+	rest.get(program.url.toString()).on('complete', function(result) {
+	    if(result instanceof Error) {
+		sys.puts("An error occurred: " + result.message); 
+	    } else {
+		fs.writeFileSync(outfile, result);
+		var checkJson = checkHtmlSource(outfile, program.checks);
+		var outJson = JSON.stringify(checkJson, null, 4);
+		console.log(outJson);
+	    }
+	});
+
+    } else {
+	sys.puts("File level checks...\n");
+	var checkJson = checkHtmlSource(program.file, program.checks);
+	var outJson = JSON.stringify(checkJson, null, 4);
+	console.log(outJson);
+    }
 } else {
-    exports.checkHtmlFile = checkHtmlFile;
+    exports.checkHtmlSource = checkHtmlSource;
 }
